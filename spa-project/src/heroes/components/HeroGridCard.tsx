@@ -13,11 +13,29 @@ interface Props {
   hero: Hero;
 }
 
+/*
+ * Tarjeta individual de héroe.
+ *
+ * Consume el contexto de favoritos. Como el contexto cambia cuando se marca
+ * cualquier héroe, TODAS las tarjetas se re-renderizan. En un grid grande se
+ * podría optimizar:
+ *   - separar el estado y las acciones en contextos distintos,
+ *   - memoizar la tarjeta con React.memo,
+ *   - o usar un selector/estado externo (Zustand, etc.).
+ *
+ * No es candidata a lazy: es una pieza pequeña que se repite muchas veces.
+ * Si la cargáramos con lazy, además de no ahorrar gran cosa, provocaríamos un
+ * Suspense por cada tarjeta.
+ */
 export const HeroGridCard = ({ hero }: Props) => {
+  // useNavigate permite navegar por código (sin un <Link> visible).
   const navigate = useNavigate();
+
+  // use(Contexto) lee los favoritos y las acciones del provider global.
   const { isFavorite, toggleFavorite } = use(FavoriteHeroContext);
 
   const handleClick = () => {
+    // El slug es la parte "bonita" de la URL: /heroes/superman.
     navigate(`/heroes/${hero.slug}`);
   };
 

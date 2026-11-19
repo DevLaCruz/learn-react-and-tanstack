@@ -7,15 +7,65 @@ import { useQuery } from '@tanstack/react-query';
 import { Shield, Zap, Brain, Gauge, Users, Star, Award } from 'lucide-react';
 import { Navigate, useParams } from 'react-router';
 
+/*
+ * ============================================================================
+ *  HERO PAGE: SIGUIENTE CANDIDATA A `lazy` (Y POR QUÉ TODAVÍA NO LO ES)
+ * ============================================================================
+ *
+ * Esta página es un ejemplo perfecto de lo que lazy resuelve:
+ *   - Solo se entra haciendo clic en una tarjeta (no es la pantalla inicial).
+ *   - Tiene mucho JSX, iconos, Cards, Tabs y Progress.
+ *   - Muchos usuarios nunca abrirán un héroe concreto.
+ *
+ * Para hacerla lazy solo habría que cambiar en app.router.tsx:
+ *
+ *   const HeroPage = lazy(() => import('@/heroes/pages/hero/HeroPage'));
+ *   ...
+ *   { path: 'heroes/:idSlug', element: <HeroPage /> }
+ *
+ * y envolverla en <Suspense fallback={...}> (o confiar en la transición del
+ * router). Si además quisiéramos dividir ESTA página, el mejor candidato son
+ * los tabs que no se ven al entrar: "Poderes", "Equipo" e "Información".
+ * Se podrían extraer a componentes y cargarlos con lazy + <Suspense>.
+ *
+ * OJO: no pongas lazy en componentes que siempre se renderizan al abrir la
+ * página (el banner, las stats principales), porque entonces el usuario vería
+ * parpadeos/fallbacks en la primera impresión.
+ * ============================================================================
+ */
 export const HeroPage = () => {
+  /*
+   * useParams lee los segmentos dinámicos de la URL.
+   * Ruta: /heroes/:idSlug  ->  /heroes/superman  ->  { idSlug: 'superman' }
+   *
+   * El valor por defecto '' evita pasar undefined a la acción si la ruta
+   * cambiara y el param no estuviera disponible.
+   */
   const { idSlug = '' } = useParams();
 
+  /*
+   * La queryKey incluye idSlug: cada héroe tiene su propia entrada en caché.
+   * Si visitas Superman y luego Batman, son dos consultas distintas.
+   *
+   * retry: false desactiva los reintentos automáticos de TanStack Query.
+   * Aquí lo usamos para que un 404 pase rápido a isError y podamos redirigir
+   * al inicio, en vez de reintentar varias veces una URL que no existe.
+   */
   const { data: superheroData, isError } = useQuery({
     queryKey: ['heroes', idSlug],
     queryFn: () => getHeroAction(idSlug),
     retry: false,
   });
 
+  /*
+   * Estados de render:
+   *   isError        -> la petición falló: <Navigate> redirige a "/".
+   *   !superheroData -> aún no hay datos (loading): mostramos un texto simple.
+   *
+   * Estos returns tempranos son seguros porque todos los hooks (useParams,
+   * useQuery) ya se ejecutaron antes. Nunca pongas un hook después de un
+   * return condicional: romperías el orden de hooks de React.
+   */
   if (isError) {
     return <Navigate to="/" />;
   }
@@ -24,6 +74,13 @@ export const HeroPage = () => {
     return <h3>Loading...</h3>;
   }
 
+  /*
+   * Valores derivados: no necesitan useState ni useMemo porque se calculan
+   * a partir de datos que ya tenemos y el cálculo es barato.
+   *
+   * averagePower queda en escala 0-100 para usarlo en el Progress y en las
+   * estrellas (cada estrella equivale a 20 puntos).
+   */
   const totalPower =
     superheroData.strength +
     superheroData.intelligence +
@@ -31,6 +88,12 @@ export const HeroPage = () => {
     superheroData.durability;
   const averagePower = Math.round((totalPower / 4) * 10);
 
+  /*
+   * Helpers de presentación: traducen un dato del dominio ("activo",
+   * "villano"...) a una clase de Tailwind. Son funciones puras y viven dentro
+   * del componente porque solo se usan aquí; si creciera la app, podrían
+   * moverse a un archivo de utilidades.
+   */
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'activo':
@@ -137,6 +200,7 @@ export const HeroPage = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Tabs no controlado: Radix guarda internamente qué tab está activo. */}
         <Tabs defaultValue="stats" className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="stats" className="flex items-center gap-2">

@@ -12,14 +12,47 @@ import {
   AccordionItem,
 } from '@/components/ui/accordion';
 
+/*
+ * Controles de búsqueda y filtros.
+ *
+ * Estado en la URL, no en useState:
+ *   - La página (SearchPage) lee ?name y ?strength para lanzar la query.
+ *   - Este componente escribe esos params.
+ *   - Al cambiar la URL, React Router re-renderiza SearchPage y TanStack Query
+ *     detecta que cambió la queryKey y hace la nueva búsqueda.
+ *
+ * Este es el típico caso de "estado compartido a través de la URL": no hay
+ * que pasar callbacks ni sincronizar dos estados.
+ *
+ * ¿lazy? El panel de filtros avanzados (AccordionContent) es un candidato
+ * razonable: no se ve hasta pulsar "Filters". Se podría extraer a un
+ * componente y cargarlo con lazy + <Suspense>.
+ */
 export const SearchControls = () => {
   // const [query, setQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
+
+  /*
+   * useRef guarda una referencia mutable que NO provoca re-render al cambiar.
+   * Aquí apunta al <input> del DOM para leer su valor solo cuando el usuario
+   * pulsa Enter. Es la forma "no controlada" de trabajar con un input:
+   *   - No re-renderizamos en cada tecla (más eficiente).
+   *   - defaultValue solo se aplica al montar.
+   *
+   * Alternativa controlada: const [query, setQuery] = useState('') +
+   * value={query} + onChange={...}. Se re-renderiza en cada tecla, pero el
+   * valor siempre está disponible en React.
+   */
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeAccordion = searchParams.get('active-accordion') ?? '';
   const selectedStrength = Number(searchParams.get('strength') ?? '0');
 
+  /*
+   * Actualización funcional de los params: `prev` es el URLSearchParams actual.
+   * Devolvemos el mismo objeto modificado; lo idiomático sería clonarlo antes
+   * (new URLSearchParams(prev)) para no mutar el estado original.
+   */
   const setQueryParams = (name: string, value: string) => {
     setSearchParams((prev) => {
       prev.set(name, value);
@@ -27,6 +60,10 @@ export const SearchControls = () => {
     });
   };
 
+  /*
+   * Buscamos solo al pulsar Enter, no en cada tecla. Así evitamos una petición
+   * por carácter y una URL distinta por cada letra escrita.
+   */
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       const value = inputRef.current?.value ?? '';
@@ -45,6 +82,8 @@ export const SearchControls = () => {
             placeholder="Search heroes, villains, powers, teams..."
             className="pl-12 h-12 text-lg bg-white"
             onKeyDown={handleKeyDown}
+            // El input no está controlado: solo se inicializa con el valor de
+            // la URL (útil al recargar o al volver atrás).
             defaultValue={searchParams.get('name') ?? ''}
           />
         </div>
@@ -57,6 +96,11 @@ export const SearchControls = () => {
             }
             className="h-12"
             onClick={() => {
+              /*
+               * El Accordion es controlado por `active-accordion` en la URL.
+               * Si ya está abierto, lo cerramos guardando ''; si no, lo
+               * abrimos guardando el value del item.
+               */
               if (activeAccordion === 'advance-filters') {
                 setQueryParams('active-accordion', '');
                 // setSearchParams((prev) => {
@@ -90,6 +134,10 @@ export const SearchControls = () => {
       </div>
 
       {/* Advanced Filters */}
+      {/*
+       * Accordion controlado: `value` viene de la URL y `collapsible` permite
+       * cerrar el item activo. Al cambiar la URL, el acordeón se abre/cierra.
+       */}
       <Accordion type="single" collapsible value={activeAccordion}>
         <AccordionItem value="advance-filters">
           {/* <AccordionTrigger>Filtros avanzados</AccordionTrigger> */}
@@ -129,6 +177,12 @@ export const SearchControls = () => {
                 <label className="text-sm font-medium">
                   Minimum Strength: {selectedStrength}/10
                 </label>
+                {/*
+                 * El Slider toma su valor inicial de la URL (?strength) y cada
+                 * cambio actualiza el param. Como cada movimiento dispara
+                 * setSearchParams, también dispara la query; para filtros "en
+                 * vivo" convendría aplicar debounce.
+                 */}
                 <Slider
                   defaultValue={[selectedStrength]}
                   onValueChange={(value) =>

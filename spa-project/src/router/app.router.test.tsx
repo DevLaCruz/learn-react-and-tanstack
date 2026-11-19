@@ -28,6 +28,14 @@ vi.mock('@/heroes/pages/hero/HeroPage', () => ({
   },
 }));
 
+/*
+ * SearchPage se carga con React.lazy, así que el router hace
+ * import('.../SearchPage') y toma la propiedad `default` del módulo.
+ * Por eso este mock debe exponer `default`, no un named export.
+ *
+ * Si el mock solo exportara `SearchPage`, lazy recibiría undefined y el test
+ * fallaría con "Element type is invalid".
+ */
 vi.mock('@/heroes/pages/search/SearchPage', () => ({
   default: () => <div data-testid="search-page"></div>,
 }));
@@ -61,6 +69,11 @@ describe('appRouter', () => {
 
     render(<RouterProvider router={router} />);
 
+    /*
+     * findByTestId y no getByTestId: el componente es lazy, por lo que en el
+     * primer render puede no existir. findBy* espera (por defecto hasta 1s) a
+     * que el elemento aparezca, lo que absorbe la resolución del import().
+     */
     expect(await screen.findByTestId('search-page')).toBeDefined();
   });
 

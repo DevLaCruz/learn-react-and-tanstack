@@ -1,6 +1,13 @@
 import type { PropsWithChildren } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
+/*
+ * PropsWithChildren añade automáticamente `children?: ReactNode` a las props.
+ * Es el patrón para componentes "contenedor" que envuelven contenido.
+ *
+ * `icon: React.ReactNode` acepta cualquier cosa renderizable: un elemento
+ * <Users />, un string, un número...
+ */
 interface Props extends PropsWithChildren {
   title: string;
   icon: React.ReactNode;

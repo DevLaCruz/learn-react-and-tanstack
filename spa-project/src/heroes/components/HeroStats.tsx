@@ -6,8 +6,24 @@ import { Badge } from '@/components/ui/badge';
 import { useHeroSummary } from '../hooks/useHeroSummary';
 import { FavoriteHeroContext } from '../context/FavoriteHeroContext';
 
+/*
+ * Dashboard de estadísticas.
+ *
+ * Consume dos fuentes de estado distintas:
+ *   1. useHeroSummary()      -> datos del servidor (TanStack Query).
+ *   2. use(Context)          -> estado global del cliente (favoritos).
+ *
+ * Si HomePage y SearchPage renderizan este componente, ambas usan la MISMA
+ * queryKey ('summary-information') y por tanto comparten caché: el resumen se
+ * pide una vez y se reutiliza (hasta que pase el staleTime).
+ *
+ * ¿lazy? No aquí: se muestra al entrar a Home/Search. Si algún día este bloque
+ * quedara debajo del fold o dentro de un tab, entonces sí sería candidato.
+ */
 export const HeroStats = () => {
   const { data: summary } = useHeroSummary();
+
+  // React 19: use(Contexto) equivale a useContext(Contexto).
   const { favoriteCount } = use(FavoriteHeroContext);
 
   // const percentageFavorite = useMemo(() => {
@@ -20,6 +36,14 @@ export const HeroStats = () => {
   //   staleTime: 1000 * 60 * 5, // 5 minutos
   // });
 
+  /*
+   * Render de carga. TanStack Query devuelve `data: undefined` mientras la
+   * primera petición está en curso. Las siguientes visitas usarán la caché y
+   * probablemente no verán este mensaje.
+   *
+   * Mejora opcional: usar `isLoading`/`isPending` y un skeleton en vez de
+   * comprobar `!summary`, para distinguir "cargando" de "sin datos".
+   */
   if (!summary) {
     return <div>Loading...</div>;
   }
@@ -45,13 +69,23 @@ export const HeroStats = () => {
         title="Favoritos"
         icon={<Heart className="h-4 w-4 text-muted-foreground" />}
       >
-        {/* Agregamos el data-testid aquí 👇 */}
-        <div data-testid="favorite-count" className="text-2xl font-bold text-red-600">
+        {/* data-testid: gancho estable para los tests, independiente del texto. */}
+        <div
+          data-testid="favorite-count"
+          className="text-2xl font-bold text-red-600"
+        >
           {favoriteCount}
         </div>
-        
-        {/* Y agregamos el data-testid aquí 👇 */}
-        <p data-testid="favorite-percentage" className="text-xs text-muted-foreground">
+
+        <p
+          data-testid="favorite-percentage"
+          className="text-xs text-muted-foreground"
+        >
+          {/*
+           * Cálculo derivado en el render: no hace falta useState porque no
+           * es una fuente de verdad, se obtiene de favoriteCount y summary.
+           * .toFixed(2) devuelve string; aquí lo queremos así para mostrarlo.
+           */}
           {((favoriteCount / summary.totalHeroes) * 100).toFixed(2)}% of total
         </p>
       </HeroStatCard>

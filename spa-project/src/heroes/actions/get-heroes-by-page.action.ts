@@ -3,11 +3,25 @@ import type { HeroesResponse } from '../types/get-heroes.response';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
+/*
+ * "Action" = función que encapsula una operación contra la API.
+ * No sabe nada de React; podría usarse desde un componente, un loader o un
+ * test. Separar esto de los componentes evita mezclar UI con HTTP.
+ *
+ * Paginación por offset:
+ *   página 1, limit 6 -> offset 0
+ *   página 2, limit 6 -> offset 6
+ *   página N, limit L -> offset (N - 1) * L
+ *
+ * La API devuelve `image` como nombre de archivo (p. ej. "superman.jpg");
+ * aquí la convertimos en URL absoluta para que <img src> funcione.
+ */
 export const getHeroesByPageAction = async (
   page: number, // 1
   limit: number = 6,
   category: string = 'all'
 ): Promise<HeroesResponse> => {
+  // Defensa contra NaN: la URL puede traer ?page=abc.
   if (isNaN(page)) {
     page = 1;
   }

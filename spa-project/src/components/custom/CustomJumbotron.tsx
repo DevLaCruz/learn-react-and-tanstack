@@ -3,6 +3,16 @@ interface Props {
   description?: string;
 }
 
+/*
+ * Cabecera visual de cada página (título grande + descripción opcional).
+ *
+ * `description?` es opcional: TypeScript obliga a comprobar que existe antes
+ * de usarla. En JSX, `{description && <p>...}` no renderiza nada si es
+ * undefined, así que el componente se adapta sin lógica extra.
+ *
+ * Este componente es pequeño y se ve al entrar, así que no tiene sentido
+ * cargarlo con lazy.
+ */
 export const CustomJumbotron = ({ title, description }: Props) => {
   return (
     <div className="text-center mb-8">
